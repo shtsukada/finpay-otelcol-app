@@ -80,7 +80,5 @@ argocd-ssh-key.pub
 *.env
 configs/*.env
 
-
-
-
+hack/.local/
 
