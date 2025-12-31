@@ -1,3 +1,33 @@
+# finpay-otelcol-app
+
+金融を模した題材のデモアプリ(gRPC)です。
+
+* `finpay-api`: 送金API(署名・nonce・冪等・重複排除・Redis/SQLite)
+* `finpay-client`: デモ用ロードジェネレータ(retry storm対応)
+
+両者ともOpenTelemetry計装を行い、OTLPで`otelcol-gateway`に送信します。
+
+---
+
+## Features(MVP)
+
+### 署名とリプレイ耐性
+* timestamp skew check: `±FINPAY_TS_SKEW` 超過→ `Unauthenticated`
+* nonce: Redis `SET <nonceKey> NX EX=<FINPAY_NONCE_TTL>` 再利用 → `FailedPrecondition`
+* key rotation: `(client_id, key_id)` で公開鍵参照、`revoked_at`があれば拒否
+
+### 冪等と二重実行防止(Idempotency/Dedupe)
+* Redis lock + cache + DB unique constraint (MVP SQLite,Plus)
+* 同一 `idempotency_key`は**同一レスポンスを返す**(snapshot)
+* `client_transfer_id` 重複も検知(AlreadyExists/OK)
+
+### Observability
+* Prometheus metrics: method/code を中心に低カーディナリティ
+* OTel traces: `trace-id` を中心に可観測化
+* High-cardinality Identifiers (`transfer_id` 等) は Prom ラベルにしない(span attributesへ)
+
+## ディレクトリ構成_TODO:完成後修正のこと
+
 finpay-otelcol-app/
 ├─ README.md
 ├─ go.mod
@@ -43,3 +73,59 @@ finpay-otelcol-app/
    └─ workflows/
       ├─ ci.yml                    # go test/lint + buildx amd64
       └─ release.yml               # tagでpush + SBOM/署名（PlusでもOK）
+
+---
+
+## Contracts
+* Env / Service / Secret / values contracts are defined in:
+  * root repo: `finpay-otelcol/DESIGN.md`
+
+---
+
+## Environment variables (MVP)
+
+### finpay-api
+* `FINPAY_GRPC_ADDR` (default `:8080`)
+* `FINPAY_METRICS_ADDR` (default `:2112`)
+* `FINPAY_REDIS_ADDR` (e.g. `redis:6379`)
+* `FINPAY_DB_DSN` (e.g. `file:/var/lib/finpay/finpay.db`)
+* `FINPAY_IDEMPOTENCY_LOCK_TTL` (e.g. `15s`)
+* `FINPAY_IDEMPOTENCY_CACHE_TTL` (e.g. `10m`)
+* `FINPAY_NONCE_TTL` (e.g. `10m`)
+* `FINPAY_TS_SKEW` (e.g. `300s`)
+* `FINPAY_KEYS_FILE` (e.g. `/etc/finpay/client_public_keys/json`)
+* `OTEL_EXPORTER_OTLP_ENDPOINT` (e.g. `otelcol-gateway:4317`)
+* `OTEL_EXPORTER_OTLP_PROTOCOL` (`grpc`)
+
+### finpay-client
+* `FINPAY_TARGET` (e.g. `finpay-api:8080`)
+* `FINPAY_CLIENT_ID` , `FINPAY_KEY_ID`
+* `FINPAY_PRIVATE_KEY_FILE` ( Secret mount )
+* `FINPAY_DURATION` (e.g. `5m`)
+* `FINPAY_CONCURRENCY` (e.g. `20`)
+* `FINPAY_RETRY_STORM` (e.g. `true`)
+* `OTEL_SERVICE_NAME` (e.g. `finpay-client`)
+* `OTEL_EXPORTER_OTLP_ENDPOINT` (e.g. `otelcol-gateway:4317`)
+
+
+## Local dev / buildx / CI
+
+```bash
+go test ./...
+go run ./cmd/finpay-api
+go run ./cmd/finpay-client
+```
+
+```bash
+make buildx-api
+make buildx-client
+```
+
+```bash
+go test ./...
+go vet ./...
+docker buildx build --platform linux/amd64
+```
+
+## License
+MIT
