@@ -12,16 +12,19 @@
 ## Features(MVP)
 
 ### 署名とリプレイ耐性
+
 * timestamp skew check: `±FINPAY_TS_SKEW` 超過→ `Unauthenticated`
 * nonce: Redis `SET <nonceKey> NX EX=<FINPAY_NONCE_TTL>` 再利用 → `FailedPrecondition`
 * key rotation: `(client_id, key_id)` で公開鍵参照、`revoked_at`があれば拒否
 
 ### 冪等と二重実行防止(Idempotency/Dedupe)
+
 * Redis lock + cache + DB unique constraint (MVP SQLite,Plus)
 * 同一 `idempotency_key`は**同一レスポンスを返す**(snapshot)
 * `client_transfer_id` 重複も検知(AlreadyExists/OK)
 
 ### Observability
+
 * Prometheus metrics: method/code を中心に低カーディナリティ
 * OTel traces: `trace-id` を中心に可観測化
 * High-cardinality Identifiers (`transfer_id` 等) は Prom ラベルにしない(span attributesへ)
@@ -77,6 +80,7 @@ finpay-otelcol-app/
 ---
 
 ## Contracts
+
 * Env / Service / Secret / values contracts are defined in:
   * root repo: `finpay-otelcol/DESIGN.md`
 
@@ -85,6 +89,7 @@ finpay-otelcol-app/
 ## Environment variables (MVP)
 
 ### finpay-api
+
 * `FINPAY_GRPC_ADDR` (default `:8080`)
 * `FINPAY_METRICS_ADDR` (default `:2112`)
 * `FINPAY_REDIS_ADDR` (e.g. `redis:6379`)
@@ -98,6 +103,7 @@ finpay-otelcol-app/
 * `OTEL_EXPORTER_OTLP_PROTOCOL` (`grpc`)
 
 ### finpay-client
+
 * `FINPAY_TARGET` (e.g. `finpay-api:8080`)
 * `FINPAY_CLIENT_ID` , `FINPAY_KEY_ID`
 * `FINPAY_PRIVATE_KEY_FILE` ( Secret mount )
@@ -106,7 +112,6 @@ finpay-otelcol-app/
 * `FINPAY_RETRY_STORM` (e.g. `true`)
 * `OTEL_SERVICE_NAME` (e.g. `finpay-client`)
 * `OTEL_EXPORTER_OTLP_ENDPOINT` (e.g. `otelcol-gateway:4317`)
-
 
 ## Local dev / buildx / CI
 
@@ -128,4 +133,5 @@ docker buildx build --platform linux/amd64
 ```
 
 ## License
+
 MIT
