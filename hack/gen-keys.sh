@@ -28,16 +28,19 @@ fi
 
 echo "==> generating Ed25519 keypair: client_id=${CLIENT_ID} key_id=${KEY_ID}"
 
-openssl genpkey -algorithm ed25519 -out "${OUR_DIR}/private.pem" >/dev/null 2>&1
+openssl genpkey -algorithm ed25519 -out "${OUT_DIR}/private.pem" >/dev/null 2>&1
 openssl pkey -in "${OUT_DIR}/private.pem" -pubout -out "${OUT_DIR}/public.pem" >/dev/null 2>&1
-PUB_PEM="$(cat "${OUT_DIR}/public.pem")"
 
 echo "==> writing public keys JSON: ${JSON_OUT}"
-python3 - <<PY
-import json, pathlib
-client_id = ${CLIENT_ID!r}
-key_id = ${KEY_ID!r}
-pub_pem = pathlib.Path(${("${OUT_DIR}/public.pem")!r}).read_text()
+python3 - "${CLIENT_ID}" "${KEY_ID}" "${OUT_DIR}/public.pem" "${JSON_OUT}" <<'PY'
+import json
+import pathlib
+import sys
+client_id = sys.argv[1]
+key_id = sys.argv[2]
+public_key_path = pathlib.Path(sys.argv[3])
+json_out_path = pathlib.Path(sys.argv[4])
+pub_pem = public_key_path.read_text()
 
 # Simple single-key format (array). Extend when you add more clients/keys.
 doc = [{
@@ -47,7 +50,7 @@ doc = [{
   "revoked_at": None,
 }]
 
-out = pathlib.Path(${JSON_OUT!r})
+out = json_out_path
 out.parent.mkdir(parents=True, exist_ok=True)
 out.write_text(json.dumps(doc, indent=2, ensure_ascii=False) + "\n")
 PY
