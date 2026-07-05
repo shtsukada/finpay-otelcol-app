@@ -82,3 +82,5 @@ configs/*.env
 
 hack/.local/
 
+finpay-api
+finpay-client
