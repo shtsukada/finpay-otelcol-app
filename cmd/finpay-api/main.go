@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	finpayv1 "github.com/shtsukada/finpay-otelcol-proto/gen/go/finpay/v1"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -26,6 +27,10 @@ type config struct {
 	metricsAddr string
 	otlpEP      string
 	serviceName string
+}
+
+type server struct {
+	finpayv1.UnimplementedFinpayServiceServer
 }
 
 func mustEnv(key, def string) string {
@@ -105,6 +110,7 @@ func main() {
 	}
 
 	grpcServer := grpc.NewServer()
+	finpayv1.RegisterFinpayServiceServer(grpcServer, &server{})
 
 	// health
 	hs := health.NewServer()
