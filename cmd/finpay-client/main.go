@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	finpayv1 "github.com/shtsukada/finpay-otelcol-proto/gen/go/finpay/v1"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -50,6 +51,9 @@ func main() {
 		log.Fatalf("dial: %v", err)
 	}
 	defer conn.Close()
+
+	finpayClient := finpayv1.NewFinpayServiceClient(conn)
+	_ = finpayClient
 
 	c := healthpb.NewHealthClient(conn)
 	resp, err := c.Check(context.Background(), &healthpb.HealthCheckRequest{})
